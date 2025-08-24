@@ -1,0 +1,110 @@
+name: "Test: Build and deploy GH Pages to own branch"
+
+on:
+  workflow_dispatch:
+    branches:
+      - main
+      - develop
+    # Review gh actions docs if you want to further define triggers, paths, etc
+    # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#on
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    name: Build and Deploy to ${{ vars.__TEST_DEPLOY_BRANCH }} branch
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    env:
+      __TEST_DEPLOY_BRANCH: ${{ vars.__TEST_DEPLOY_BRANCH }}
+      __TEST_DEPLOY_URL: ${{ vars.__TEST_DEPLOY_URL }}
+      __TEST_GOOGLE_TAG_MANAGER: ${{ vars.__TEST_GOOGLE_TAG_MANAGER }}
+      DEPLOY_BRANCH_EXISTS: 0
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the deployment source is a tag
+        run: |
+          echo "Git ref: $GITHUB_REF"
+          echo "Git ref name: ${{ github.ref_name }}"
+          echo "This step is skipped in test"
+          exit 0
+          if [[ ! "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "This workflow must be run against a tag."
+            exit 1
+          fi
+
+      - name: Generate variables
+        run: |
+          echo "SHORT_SHA=$(git rev-parse --short $GITHUB_SHA)" >> "$GITHUB_ENV"
+
+      - name: Check ${{ vars.__TEST_DEPLOY_BRANCH }} branch exists
+        working-directory: .
+        id: branch-exists
+        # Use git ls-remote to determine if a named branch exists
+        # Grep the output to find the branch name we want to check
+        # If it does not exist grep will return an exit code of 1, which will cause the step to fail
+        # So if grep returns no results, then test is run to check if the last exit code was equal to 1
+        # If it was, then test will return a 0 exit code and the step will continue, any other error code will result in
+        # test returning exit code 1
+        run: |
+          EXISTS=`git ls-remote --heads | { grep -w refs/heads/$__TEST_DEPLOY_BRANCH || test $? = 1; }`
+          if [ "$EXISTS" ]; then
+            echo "The deployment branch ($__TEST_DEPLOY_BRANCH) already exists"
+            echo "DEPLOY_BRANCH_EXISTS=1" >> $GITHUB_ENV
+          else
+            echo "The deployment branch ($__TEST_DEPLOY_BRANCH) does not already exist"
+          fi
+
+      - name: Create ${{ vars.__TEST_DEPLOY_BRANCH }} branch if it does not exists
+        working-directory: .
+        if: ${{ env.DEPLOY_BRANCH_EXISTS == '0' }}
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git switch --orphan $__TEST_DEPLOY_BRANCH
+          git commit --allow-empty -m "Initial commit"
+          git push -u origin $__TEST_DEPLOY_BRANCH
+          git switch $GITHUB_REF_NAME
+          git branch -D $__TEST_DEPLOY_BRANCH
+
+      - name: Set dynamic variables in code to deployment values
+        run: |
+          sed -i "s+{{GIT_COMMIT_REF}}+${{ env.SHORT_SHA }}+g" scripts/psn-entitlements.sh
+          sed -i "s+{{GIT_COMMIT_REF}}+${{ env.SHORT_SHA }}+g" scripts/psn-entitlements.ps1
+          sed -i "s+{{GIT_COMMIT_REF}}+${{ env.SHORT_SHA }}+g" website/index.html
+          sed -i "s+{{GIT_TAG_NAME}}+${{ github.ref_name }}+g" scripts/psn-entitlements.sh
+          sed -i "s+{{GIT_TAG_NAME}}+${{ github.ref_name }}+g" scripts/psn-entitlements.ps1
+          sed -i "s+{{GIT_TAG_NAME}}+${{ github.ref_name }}+g" website/index.html
+      
+      - name: Upload build files
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.SHORT_SHA }}-files
+          path: |
+            scripts/psn-entitlements.sh
+            scripts/psn-entitlements.ps1
+            website/index.html
+        
+      - name: Build website
+        working-directory: .
+        run: |
+           mkdir build
+           cp -Rpf website/* ./build
+
+      - name: Deploy build to ${{ env.__TEST_DEPLOY_BRANCH }} branch
+        working-directory: .
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git fetch
+          git checkout -f $__TEST_DEPLOY_BRANCH
+          echo "build/" > .gitignore
+          echo ".gitignore" >> .gitignore
+          cp -Rpf build/* .
+          git add -A
+          git commit -am "deploy: $GITHUB_SHA"
+          git push origin $__TEST_DEPLOY_BRANCH
