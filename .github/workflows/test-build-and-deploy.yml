@@ -30,10 +30,10 @@ jobs:
         run: |
           echo "Git ref: $GITHUB_REF"
           echo "Git ref name: ${{ github.ref_name }}"
-          echo "This step is skipped in test"
+          echo "::warning title=Tag check skipped::This step is skipped in test"
           exit 0
           if [[ ! "$GITHUB_REF" == refs/tags/* ]]; then
-            echo "This workflow must be run against a tag."
+            echo "::error title=This workflow must be run against a tag::Current git ref: $GITHUB_REF"
             exit 1
           fi
 
@@ -79,6 +79,10 @@ jobs:
           sed -i "s+{{GIT_TAG_NAME}}+${{ github.ref_name }}+g" scripts/psn-entitlements.sh
           sed -i "s+{{GIT_TAG_NAME}}+${{ github.ref_name }}+g" scripts/psn-entitlements.ps1
           sed -i "s+{{GIT_TAG_NAME}}+${{ github.ref_name }}+g" website/index.html
+          echo "These files have been prepared for release:  " >> $GITHUB_STEP_SUMMARY
+          echo "* $(sha256sum scripts/psn-entitlements.sh)" >> $GITHUB_STEP_SUMMARY
+          echo "* $(sha256sum scripts/psn-entitlements.ps1)" >> $GITHUB_STEP_SUMMARY
+          echo "* $(sha256sum website/index.html)" >> $GITHUB_STEP_SUMMARY
       
       - name: Upload build files
         uses: actions/upload-artifact@v4
