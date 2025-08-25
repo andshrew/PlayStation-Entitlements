@@ -1,0 +1,853 @@
+<!--
+https://github.com/andshrew/PlayStation-Entitlements
+Version: v1.0.0/2ae914a
+
+MIT License
+2025 GPT4.1, andshrew
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PSN Entitlements Viewer</title>
+  <style>
+    :root {
+      --color-bg-light: #f7f7f7;
+      --color-bg-dark: #23232b;
+      --color-header-light: #eef;
+      --color-header-dark: #28283a;
+      --color-table-bg-light: #fff;
+      --color-table-bg-dark: #262634;
+      --color-border-light: #ccd;
+      --color-border-dark: #44445d;
+      --color-th-light: #e5e5e5;
+      --color-th-dark: #343450;
+      --color-selected-light: #d0e8ff;
+      --color-selected-dark: #284077;
+      --color-text-light: #222;
+      --color-text-dark: #f2f2f2;
+      --color-title-light: #003087;
+      --color-title-dark: #9ecaff;
+      --color-oval-green-light: #15a84c;
+      --color-oval-green-dark: #5bd98c;
+      --color-oval-red-light: #c33;
+      --color-oval-red-dark: #e85c5c;
+      --color-oval-bg-green-light: #eaffed;
+      --color-oval-bg-green-dark: #294036;
+      --color-oval-bg-red-light: #ffeaea;
+      --color-oval-bg-red-dark: #402929;
+      --color-btn-light: #003087;
+      --color-btn-dark: #2579e6;
+      --color-btn-copied-light: #15a84c;
+      --color-btn-copied-dark: #5bd98c;
+      --color-close-btn-light: #c33;
+      --color-close-btn-dark: #e85c5c;
+      --color-filters-bg-light: #fff9d6;
+      --color-filters-bg-dark: #4d4d2d;
+      --color-filters-active-light: #ffe57f;
+      --color-filters-active-dark: #856800;
+      --color-filters-border-light: #f5e0a3;
+      --color-filters-border-dark: #ad9000;
+      --color-filters-text-light: #ad9000;
+      --color-filters-text-dark: #ffe57f;
+      --color-related-box-bg-light: #fffbe6;
+      --color-related-box-bg-dark: #423d26;
+      --color-related-box-border-light: #f5e0a3;
+      --color-related-box-border-dark: #ad9000;
+      --color-related-title-light: #ad9000;
+      --color-related-title-dark: #ffe57f;
+      --color-scrollbtn-bg-light: #003087;
+      --color-scrollbtn-bg-dark: #2579e6;
+      --color-scrollbtn-text-light: #fff;
+      --color-scrollbtn-text-dark: #fff;
+    }
+    html, body {
+      font-family: Arial, sans-serif;
+      background: var(--color-bg-light);
+      color: var(--color-text-light);
+      transition: background 0.2s, color 0.2s;
+    }
+    html[data-theme="dark"], body[data-theme="dark"] {
+      background: var(--color-bg-dark);
+      color: var(--color-text-dark);
+    }
+    html[data-theme="dark"] h1,
+    html[data-theme="dark"] #details-title {
+      color: var(--color-title-dark);
+    }
+    html[data-theme="light"] h1,
+    html[data-theme="light"] #details-title {
+      color: var(--color-title-light);
+    }
+    h1 {
+      color: var(--color-title-light);
+      font-family: Arial, sans-serif;
+    }
+    input, button, select, label {
+      font-family: Arial, sans-serif;
+    }
+    #search {
+      margin-bottom: 1em;
+      width: 30em;
+      background: var(--color-table-bg-light);
+      padding: 10px 16px;
+      font-size: 1.08em;
+      border-radius: 7px;
+      border: 1px solid var(--color-border-light);
+    }
+    html[data-theme="dark"] #search {
+      background: var(--color-table-bg-dark);
+      color: var(--color-text-dark);
+      border: 1px solid var(--color-border-dark);
+    }
+    #jsonFile {
+      padding: 10px 14px;
+      font-size: 1.08em;
+      border-radius: 7px;
+      border: 1px solid var(--color-border-light);
+      margin-right: 0.7em;
+      margin-bottom: 1em;
+      background: var(--color-table-bg-light);
+      color: var(--color-text-light);
+    }
+    html[data-theme="dark"] #jsonFile {
+      background: var(--color-table-bg-dark);
+      border: 1px solid var(--color-border-dark);
+      color: var(--color-text-dark);
+    }
+    #row-count {
+      margin: 1em 0 0.2em 0;
+      font-size: 1.1em;
+      color: var(--color-text-light);
+    }
+    html[data-theme="dark"] #row-count {
+      color: var(--color-text-dark);
+    }
+    .filters {
+      margin-bottom: 0.5em;
+    }
+    .filters button {
+      background: var(--color-filters-bg-light);
+      color: var(--color-filters-text-light);
+      border: 1px solid var(--color-filters-border-light);
+      border-radius: 8px;
+      padding: 10px 22px;
+      margin-right: 0.4em;
+      font-size: 1.08em;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.18s, color 0.18s, border 0.18s;
+    }
+    .filters button.active {
+      background: var(--color-filters-active-light);
+      color: var(--color-table-bg-light);
+      border: 1.5px solid var(--color-filters-border-light);
+    }
+    html[data-theme="dark"] .filters button {
+      background: var(--color-filters-bg-dark);
+      border: 1px solid var(--color-filters-border-dark);
+      color: var(--color-filters-text-dark);
+    }
+    html[data-theme="dark"] .filters button.active {
+      background: var(--color-filters-active-dark);
+      border: 1.5px solid var(--color-filters-border-dark);
+      color: var(--color-table-bg-dark);
+    }
+    .theme-switcher {
+      display: flex;
+      align-items: center;
+      position: absolute;
+      top: 22px;
+      right: 32px;
+      background: var(--color-table-bg-light);
+      border: 1px solid var(--color-border-light);
+      border-radius: 8px;
+      padding: 7px 18px 7px 12px;
+      font-size: 1.08em;
+      color: var(--color-text-light);
+      z-index: 99;
+    }
+    html[data-theme="dark"] .theme-switcher {
+      background: var(--color-table-bg-dark);
+      border: 1px solid var(--color-border-dark);
+      color: var(--color-text-dark);
+    }
+    .theme-switcher label {
+      margin-right: 0.7em;
+      font-weight: 600;
+      font-family: Arial, sans-serif;
+      font-size: 1.08em;
+    }
+    .theme-switcher select {
+      background: var(--color-header-light);
+      color: var(--color-text-light);
+      border: 1px solid var(--color-border-light);
+      border-radius: 5px;
+      font-size: 1.08em;
+      padding: 8px 18px 8px 10px;
+      font-family: Arial, sans-serif;
+    }
+    html[data-theme="dark"] .theme-switcher select {
+      background: var(--color-header-dark);
+      color: var(--color-text-dark);
+      border: 1px solid var(--color-border-dark);
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      background: var(--color-table-bg-light);
+      color: var(--color-text-light);
+      font-family: Arial, sans-serif;
+    }
+    th, td {
+      border: 1px solid var(--color-border-light);
+      padding: 8px;
+      font-family: Arial, sans-serif;
+    }
+    th {
+      background: var(--color-th-light);
+      cursor: pointer;
+      font-family: Arial, sans-serif;
+    }
+    tr.selected {
+      background: var(--color-selected-light);
+    }
+    html[data-theme="dark"] table {
+      background: var(--color-table-bg-dark);
+      color: var(--color-text-dark);
+    }
+    html[data-theme="dark"] th, html[data-theme="dark"] td {
+      border: 1px solid var(--color-border-dark);
+    }
+    html[data-theme="dark"] th {
+      background: var(--color-th-dark);
+    }
+    html[data-theme="dark"] tr.selected {
+      background: var(--color-selected-dark);
+    }
+    #details {
+      margin-top: 2em;
+      padding: 1em;
+      background: var(--color-header-light);
+      border: 1px solid var(--color-border-light);
+      display: none;
+      position: relative;
+      min-height: 180px;
+      overflow: auto;
+      color: var(--color-text-light);
+      font-family: Arial, sans-serif;
+    }
+    html[data-theme="dark"] #details {
+      background: var(--color-header-dark);
+      border: 1px solid var(--color-border-dark);
+      color: var(--color-text-dark);
+    }
+    .details-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 1em;
+      flex-wrap: wrap;
+      font-family: Arial, sans-serif;
+    }
+    .details-header-left {
+      display: flex;
+      align-items: flex-start;
+      gap: 18px;
+      flex: 1 1 auto;
+    }
+    .details-header-imgwrap {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      min-width: 130px;
+      max-width: 130px;
+      margin-right: 10px;
+    }
+    #details-img {
+      width: 120px;
+      height: 120px;
+      object-fit: contain;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.13);
+      background: var(--color-table-bg-light);
+      border: 1px solid var(--color-border-light);
+      display: none;
+      margin-bottom: 10px;
+    }
+    html[data-theme="dark"] #details-img {
+      background: var(--color-table-bg-dark);
+      border: 1px solid var(--color-border-dark);
+    }
+    .details-header-main {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: flex-start;
+      min-width: 220px;
+      font-family: Arial, sans-serif;
+    }
+    #details-title {
+      margin: 0;
+      margin-bottom: 0.5em;
+      color: var(--color-title-light);
+      font-family: Arial, sans-serif;
+    }
+    html[data-theme="dark"] #details-title {
+      color: var(--color-title-dark);
+    }
+    .related-sub-details-box {
+      background: var(--color-related-box-bg-light);
+      border-radius: 14px;
+      box-shadow: 0 1px 6px rgba(200,160,0,0.05);
+      border: 1px solid var(--color-related-box-border-light);
+      padding: 0.8em 1.2em;
+      margin-bottom: 0.7em;
+      margin-top: 0.2em;
+      min-width: 220px;
+      max-width: 400px;
+      font-size: 0.99em;
+      color: var(--color-text-light);
+      font-family: Arial, sans-serif;
+    }
+    html[data-theme="dark"] .related-sub-details-box {
+      background: var(--color-related-box-bg-dark);
+      border: 1px solid var(--color-related-box-border-dark);
+      color: var(--color-text-dark);
+    }
+    .related-sub-details-title {
+      font-weight: bold;
+      color: var(--color-related-title-light);
+      margin-bottom: 0.4em;
+      font-size: 1.07em;
+      letter-spacing: 0.01em;
+      font-family: Arial, sans-serif;
+    }
+    html[data-theme="dark"] .related-sub-details-title {
+      color: var(--color-related-title-dark);
+    }
+    .extra-details-line {
+      margin-bottom: 0.2em;
+      white-space: normal;
+      word-break: break-word;
+      font-family: Arial, sans-serif;
+    }
+    .oval {
+      display: inline-block;
+      padding: 0.35em 1em;
+      border: 2px solid var(--color-oval-green-light);
+      border-radius: 50px;
+      background: var(--color-oval-bg-green-light);
+      font-weight: bold;
+      margin-top: 0.3em;
+      margin-bottom: 0.3em;
+      margin-right: 0.5em;
+      color: var(--color-oval-green-light);
+      font-family: Arial, sans-serif;
+    }
+    .oval-red {
+      border-color: var(--color-oval-red-light);
+      color: var(--color-oval-red-light);
+      background: var(--color-oval-bg-red-light);
+    }
+    .oval-green {
+      border-color: var(--color-oval-green-light);
+      color: var(--color-oval-green-light);
+      background: var(--color-oval-bg-green-light);
+    }
+    html[data-theme="dark"] .oval {
+      border-color: var(--color-oval-green-dark);
+      background: var(--color-oval-bg-green-dark);
+      color: var(--color-oval-green-dark);
+    }
+    html[data-theme="dark"] .oval-red {
+      border-color: var(--color-oval-red-dark);
+      color: var(--color-oval-red-dark);
+      background: var(--color-oval-bg-red-dark);
+    }
+    html[data-theme="dark"] .oval-green {
+      border-color: var(--color-oval-green-dark);
+      color: var(--color-oval-green-dark);
+      background: var(--color-oval-bg-green-dark);
+    }
+    .details-header-right {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      min-width: 160px;
+      justify-content: flex-end;
+      font-family: Arial, sans-serif;
+    }
+    .close-btn {
+      background: var(--color-close-btn-light);
+      color: white;
+      border: none;
+      padding: 10px 14px;
+      font-size: 1.08em;
+      border-radius: 7px;
+      font-family: Arial, sans-serif;
+    }
+    html[data-theme="dark"] .close-btn {
+      background: var(--color-close-btn-dark);
+    }
+    .copy-btn {
+      background: var(--color-btn-light);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 1.08em;
+      border-radius: 7px;
+      transition: background 0.2s;
+      font-family: Arial, sans-serif;
+    }
+    .copy-btn.copied {
+      background: var(--color-btn-copied-light);
+    }
+    html[data-theme="dark"] .copy-btn {
+      background: var(--color-btn-dark);
+    }
+    html[data-theme="dark"] .copy-btn.copied {
+      background: var(--color-btn-copied-dark);
+    }
+    #details-content {
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: "Menlo", "Monaco", "Consolas", "Liberation Mono", monospace;
+      font-size: 1em;
+      margin-top: 1em;
+      color: var(--color-text-light);
+    }
+    html[data-theme="dark"] #details-content {
+      color: var(--color-text-dark);
+    }
+    #scrollTopBtn {
+      display: none;
+      position: fixed;
+      right: 40px;
+      bottom: 40px;
+      z-index: 100;
+      background: var(--color-scrollbtn-bg-light);
+      color: var(--color-scrollbtn-text-light);
+      border: none;
+      border-radius: 50%;
+      width: 48px;
+      height: 48px;
+      font-size: 2em;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      transition: opacity 0.2s;
+      font-family: Arial, sans-serif;
+    }
+    html[data-theme="dark"] #scrollTopBtn {
+      background: var(--color-scrollbtn-bg-dark);
+      color: var(--color-scrollbtn-text-dark);
+    }
+    .checkmark {
+      color: var(--color-oval-green-light);
+      font-size: 1.2em;
+      font-weight: bold;
+      margin-right: 0.25em;
+      vertical-align: middle;
+      font-family: Arial, sans-serif;
+    }
+    html[data-theme="dark"] .checkmark {
+      color: var(--color-oval-green-dark);
+    }
+    @media (max-width: 800px) {
+      table, th, td { font-size: 0.85em; }
+      #search { width: 100%; }
+      #scrollTopBtn { right: 10px; bottom: 10px; }
+      #details-img { width: 70px; height: 70px; }
+      .details-header { flex-direction: column; align-items: flex-start;}
+      .details-header-left { gap: 10px; }
+      #details-img { margin-bottom: 0.5em; }
+      .details-header-imgwrap { min-width: 75px; max-width: 75px; }
+      .details-header-main { min-width: 0; }
+      .related-sub-details-box { max-width: 100%; }
+      .filters { margin-bottom: 1em; }
+      .theme-switcher { margin-bottom: 1em; position: static; top: unset; right: unset; }
+    }
+  </style>
+</head>
+<body>
+  <h1>PSN Entitlements Viewer</h1>
+  Visit <a href="https://github.com/andshrew/PlayStation-Entitlements" target="_blank" >https://github.com/andshrew/PlayStation-Entitlements</a> for additional information.<br><br>
+  <div class="theme-switcher">
+    <label for="theme-select">Theme:</label>
+    <select id="theme-select">
+      <option value="auto">Match OS</option>
+      <option value="light">Light</option>
+      <option value="dark">Dark</option>
+    </select>
+  </div>
+  <input type="file" id="jsonFile" accept=".json,.txt">
+  <input type="text" id="search" placeholder="Search by Game Name, Product ID, SKU, etc...">
+  <div id="error"></div>
+  <div class="filters">
+    <button id="filter-subscription">Subscription</button>
+    <button id="filter-active">Active</button>
+    <button id="filter-reset">Reset</button>
+  </div>
+  <div id="row-count"></div>
+  <table id="result-table" style="display:none;">
+    <thead>
+      <tr>
+        <th data-sort="id">ID</th>
+        <th data-sort="gameMeta.name">Game Name</th>
+        <th data-sort="productId">Product ID</th>
+        <th data-sort="skuId">SKU ID</th>
+        <!--<th data-sort="activeFlag">Active</th>
+        <th data-sort="license.startDate">Start Date</th>
+        <th data-sort="inactiveDate">Inactive Date</th>-->
+        <th data-sort="activeDate">Active Date</th>
+        <th data-sort="subscription">Subscription</th>
+      </tr>
+    </thead>
+    <tbody id="results-body"></tbody>
+  </table>
+
+  <div id="details">
+    <div class="details-header" id="details-header">
+      <div class="details-header-left">
+        <div class="details-header-imgwrap">
+          <img id="details-img" src="" alt="Entitlement Image" />
+        </div>
+        <div class="details-header-main">
+          <h2 id="details-title">Entitlement Details</h2>
+          <div id="extra-details"></div>
+        </div>
+      </div>
+      <div class="details-header-right">
+        <button class="close-btn" id="closeDetails">Close</button>
+        <button class="copy-btn" id="copyDetails">Copy JSON</button>
+      </div>
+    </div>
+    <pre id="details-content"></pre>
+  </div>
+
+  <button id="scrollTopBtn" title="Scroll to top">&#8679;</button>
+
+  <script>
+    console.log("Hello there!")
+    console.log("https://github.com/andshrew/PlayStation-Entitlements")
+    console.log("Version: v1.0.0/2ae914a")
+
+    // ---- THEME SWITCHER ----
+    function getSystemTheme() {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    function applyTheme(theme) {
+      if (theme === 'auto') {
+        theme = getSystemTheme();
+      }
+      document.documentElement.setAttribute('data-theme', theme);
+      document.body.setAttribute('data-theme', theme);
+    }
+    function saveThemePref(pref) {
+      localStorage.setItem('psn-theme-pref', pref);
+    }
+    function loadThemePref() {
+      // Default to light theme if no preference is set
+      return localStorage.getItem('psn-theme-pref') || 'light';
+    }
+    function setThemeSelect(value) {
+      document.getElementById('theme-select').value = value;
+    }
+    function updateThemeFromSelect() {
+      const sel = document.getElementById('theme-select').value;
+      saveThemePref(sel);
+      applyTheme(sel);
+    }
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+      if (loadThemePref() === 'auto') applyTheme('auto');
+    });
+    document.addEventListener('DOMContentLoaded', function() {
+      const pref = loadThemePref();
+      setThemeSelect(pref);
+      applyTheme(pref);
+      document.getElementById('theme-select').addEventListener('change', updateThemeFromSelect);
+    });
+
+    // ---- MAIN LOGIC ----
+    let entitlements = [];
+    let currentSort = { key: 'activeDate', asc: false };
+    let filteredEntitlements = [];
+    let lastScrollY = 0;
+    let lastRowIdx = null;
+    let lastDetailsJson = "";
+    let currentFilter = null; // 'subscription', 'active', or null
+
+    function getProp(obj, path) {
+      return path.split('.').reduce((o, k) => (o || {})[k], obj);
+    }
+
+    function dateCompare(a, b, key, asc) {
+      let va, vb;
+      if (key === 'activeDate') {
+        va = getProp(a, 'activeDate') || getProp(a, 'license.startDate');
+        vb = getProp(b, 'activeDate') || getProp(b, 'license.startDate');
+      } else {
+        va = getProp(a, key);
+        vb = getProp(b, key);
+      }
+      let vaDate = va ? Date.parse(va) : (asc ? Number.MAX_SAFE_INTEGER : Number.MIN_SAFE_INTEGER);
+      let vbDate = vb ? Date.parse(vb) : (asc ? Number.MAX_SAFE_INTEGER : Number.MIN_SAFE_INTEGER);
+      if (vaDate === vbDate) return 0;
+      return (vaDate > vbDate ? 1 : -1) * (asc ? 1 : -1);
+    }
+
+    function sortTable(key) {
+      if (currentSort.key === key) {
+        currentSort.asc = !currentSort.asc;
+      } else {
+        currentSort.asc = key === "activeDate" ? false : true;
+      }
+      currentSort.key = key;
+      applyCurrentSort();
+    }
+
+    function applyCurrentSort() {
+      if (!currentSort.key) return;
+      filteredEntitlements.sort((a, b) => {
+        if (currentSort.key === "activeDate") {
+          return dateCompare(a, b, currentSort.key, currentSort.asc);
+        }
+        let va = getProp(a, currentSort.key), vb = getProp(b, currentSort.key);
+        if (typeof va === 'string') va = va.toLowerCase();
+        if (typeof vb === 'string') vb = vb.toLowerCase();
+        if (va == null) return 1;
+        if (vb == null) return -1;
+        if (va === vb) return 0;
+        return (va > vb ? 1 : -1) * (currentSort.asc ? 1 : -1);
+      });
+      renderTable();
+    }
+
+    function renderTable() {
+      updateRowCount();
+      const tbody = document.getElementById('results-body');
+      tbody.innerHTML = '';
+      filteredEntitlements.forEach((item, idx) => {
+        const retentionPolicy = getProp(item, 'rewardMeta.retentionPolicy');
+        let subscriptionCell = "";
+        if (typeof retentionPolicy !== "undefined" && retentionPolicy !== 0 && retentionPolicy !== "0" && retentionPolicy !== null) {
+          subscriptionCell = `<span class="checkmark">&#10003;</span>${retentionPolicy}`;
+        }
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${item.id || ''}</td>
+          <td>${getProp(item, 'gameMeta.name') || ''}</td>
+          <td>${item.productId || ''}</td>
+          <td>${item.skuId || ''}</td>
+          <!--  <td>${item.activeFlag ? 'Yes' : 'No'}</td> -->
+          <!--  <td>${getProp(item, 'license.startDate') || ''}</td> -->
+          <!--  <td>${item.inactiveDate || ''}</td> -->
+          <td>${item.activeDate || getProp(item, 'license.startDate') || ''}</td>
+          <td>${subscriptionCell}</td>
+        `;
+        tr.onclick = () => showDetails(item, idx, tr);
+        tbody.appendChild(tr);
+      });
+      document.getElementById('result-table').style.display = filteredEntitlements.length ? 'table' : 'none';
+    }
+
+    function updateRowCount() {
+      const rowCountEl = document.getElementById('row-count');
+      if (filteredEntitlements.length === 0) {
+        rowCountEl.textContent = '';
+        return;
+      }
+      const totalRows = entitlements.length;
+      const filteredRows = filteredEntitlements.length;
+      if (filteredRows === totalRows) {
+        rowCountEl.textContent = `Rows: ${totalRows}`;
+      } else {
+        rowCountEl.textContent = `Rows: ${filteredRows} (filtered from ${totalRows})`;
+      }
+    }
+
+    function filterTable() {
+      let result = entitlements.slice();
+      const term = document.getElementById('search').value.trim().toLowerCase();
+      if (term.length) {
+        result = result.filter(e => {
+          return (
+            (e.id && e.id.toLowerCase().includes(term)) ||
+            (getProp(e, 'gameMeta.name') && getProp(e, 'gameMeta.name').toLowerCase().includes(term)) ||
+            (e.productId && e.productId.toLowerCase().includes(term)) ||
+            (e.skuId && e.skuId.toLowerCase().includes(term)) ||
+            (e.activeDate && e.activeDate.toLowerCase().includes(term))
+          );
+        });
+      }
+      if (currentFilter === 'subscription') {
+        result = result.filter(item => {
+          const retentionPolicy = getProp(item, 'rewardMeta.retentionPolicy');
+          return typeof retentionPolicy !== "undefined" && retentionPolicy !== 0 && retentionPolicy !== "0" && retentionPolicy !== null;
+        });
+      } else if (currentFilter === 'active') {
+        result = result.filter(item => {
+          const inactiveDate = item.inactiveDate;
+          if (!inactiveDate) return true;
+          const dateObj = new Date(inactiveDate);
+          return dateObj.getTime() > Date.now();
+        });
+      }
+      filteredEntitlements = result;
+      applyCurrentSort();
+    }
+
+    document.getElementById('filter-subscription').addEventListener('click', function() {
+      currentFilter = 'subscription';
+      setFilterButtonStates();
+      filterTable();
+    });
+    document.getElementById('filter-active').addEventListener('click', function() {
+      currentFilter = 'active';
+      setFilterButtonStates();
+      filterTable();
+    });
+    document.getElementById('filter-reset').addEventListener('click', function() {
+      currentFilter = null;
+      setFilterButtonStates();
+      filterTable();
+    });
+
+    function setFilterButtonStates() {
+      document.getElementById('filter-subscription').classList.toggle('active', currentFilter === 'subscription');
+      document.getElementById('filter-active').classList.toggle('active', currentFilter === 'active');
+      document.getElementById('filter-reset').classList.toggle('active', currentFilter === null);
+    }
+
+    function showDetails(item, idx, tr) {
+      lastScrollY = window.scrollY;
+      lastRowIdx = idx;
+      document.querySelectorAll('#results-body tr').forEach(tr => tr.classList.remove('selected'));
+      document.querySelectorAll('#results-body tr')[idx].classList.add('selected');
+      lastDetailsJson = JSON.stringify(item, null, 2);
+      document.getElementById('details-content').textContent = lastDetailsJson;
+      let imgUrl = getProp(item, 'productMeta.imageUrl') || getProp(item, 'titleMeta.imageUrl');
+      const img = document.getElementById('details-img');
+      if (imgUrl) {
+        img.src = imgUrl;
+        img.style.display = 'block';
+      } else {
+        img.style.display = 'none';
+        img.src = '';
+      }
+      document.getElementById('details').style.display = 'block';
+      document.getElementById('copyDetails').classList.remove('copied');
+      renderExtraDetails(item);
+      setTimeout(() => {
+        document.getElementById('details-header').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 0);
+    }
+
+    function renderExtraDetails(item) {
+      const extraDiv = document.getElementById('extra-details');
+      extraDiv.innerHTML = "";
+      let rewardId = getProp(item, 'rewardMeta.rewardId');
+      if (rewardId) {
+        let related = entitlements.find(e => String(e.id) === String(rewardId));
+        if (related) {
+          let productName = getProp(related, 'productMeta.name');
+          let gameName = getProp(related, 'gameMeta.name');
+          let inactiveDate = getProp(item, 'license.expiration') || item.inactiveDate;
+          let inactiveDateHtml = "";
+          if (inactiveDate) {
+            let dateObj = new Date(inactiveDate);
+            let isFuture = dateObj.getTime() > Date.now();
+            let formatted = dateObj.toLocaleString(undefined, {
+              year: 'numeric', month: 'short', day: 'numeric',
+              hour: '2-digit', minute: '2-digit', second: '2-digit'
+            });
+            inactiveDateHtml = `<div class="extra-details-line">
+              <span class="oval ${isFuture ? 'oval-green' : 'oval-red'}">
+                ${formatted}
+              </span>
+              <span style="font-weight:500;">Inactive Date</span>
+            </div>`;
+          }
+          extraDiv.innerHTML = `
+            <div class="related-sub-details-box">
+              <div class="related-sub-details-title">Related Subscription Details</div>
+              ${productName ? `<div class="extra-details-line"><strong>Related Product Name:</strong> ${productName}</div>` : ""}
+              ${gameName ? `<div class="extra-details-line"><strong>Related Game Name:</strong> ${gameName}</div>` : ""}
+              ${inactiveDateHtml}
+            </div>
+          `;
+        }
+      }
+    }
+
+    document.getElementById('copyDetails').addEventListener('click', function() {
+      if (!lastDetailsJson) return;
+      navigator.clipboard.writeText(lastDetailsJson).then(() => {
+        this.classList.add('copied');
+        this.textContent = 'Copied!';
+        setTimeout(() => {
+          this.classList.remove('copied');
+          this.textContent = 'Copy JSON';
+        }, 1200);
+      });
+    });
+
+    document.getElementById('closeDetails').addEventListener('click', function() {
+      document.getElementById('details').style.display = 'none';
+      document.querySelectorAll('#results-body tr').forEach(tr => tr.classList.remove('selected'));
+      window.scrollTo({ top: lastScrollY, behavior: 'smooth' });
+      if (lastRowIdx !== null) {
+        const row = document.querySelectorAll('#results-body tr')[lastRowIdx];
+        if (row) row.classList.add('selected');
+      }
+    });
+
+    document.getElementById('jsonFile').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        try {
+          const json = JSON.parse(event.target.result);
+          if (!json.entitlements || !Array.isArray(json.entitlements)) throw new Error("Invalid file: 'entitlements' array not found.");
+          entitlements = json.entitlements;
+          filteredEntitlements = entitlements.slice();
+          document.getElementById('search').value = '';
+          sortTable('activeDate');
+          document.getElementById('error').textContent = '';
+          document.getElementById('details').style.display = 'none';
+          setFilterButtonStates();
+        } catch (err) {
+          document.getElementById('error').textContent = 'Error: ' + err.message;
+          entitlements = [];
+          filteredEntitlements = [];
+          renderTable();
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    document.getElementById('search').addEventListener('input', filterTable);
+
+    document.querySelectorAll('#result-table th').forEach(th => {
+      th.addEventListener('click', function() {
+        sortTable(th.getAttribute('data-sort'));
+      });
+    });
+
+    const scrollBtn = document.getElementById('scrollTopBtn');
+    window.addEventListener('scroll', function() {
+      if (window.scrollY > 150) {
+        scrollBtn.style.display = 'block';
+        scrollBtn.style.opacity = '1';
+      } else {
+        scrollBtn.style.opacity = '0';
+        setTimeout(() => { scrollBtn.style.display = 'none'; }, 200);
+      }
+    });
+    scrollBtn.addEventListener('click', function() {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  </script>
+</body>
+</html>
