@@ -1,0 +1,120 @@
+name: "Prod: Build, release and deploy GH Pages to own branch"
+
+on:
+  workflow_dispatch:
+    branches:
+      - main
+    # Review gh actions docs if you want to further define triggers, paths, etc
+    # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#on
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    name: Build, release and deploy to ${{ vars.DEPLOY_BRANCH }} branch
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    env:
+      DEPLOY_BRANCH: ${{ vars.DEPLOY_BRANCH }}
+      DEPLOY_URL: ${{ vars.DEPLOY_URL }}
+      GOOGLE_TAG_MANAGER: ${{ vars.GOOGLE_TAG_MANAGER }}
+      DEPLOY_BRANCH_EXISTS: 0
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the deployment source is a tag
+        run: |
+          echo "Git ref: $GITHUB_REF"
+          echo "Git ref name: ${{ github.ref_name }}"
+          if [[ ! "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "::error title=This workflow must be run against a tag::Current git ref: $GITHUB_REF"
+            exit 1
+          fi
+
+      - name: Generate variables
+        run: |
+          echo "SHORT_SHA=$(git rev-parse --short $GITHUB_SHA)" >> "$GITHUB_ENV"
+
+      - name: Check ${{ vars.DEPLOY_BRANCH }} branch exists
+        working-directory: .
+        id: branch-exists
+        # Use git ls-remote to determine if a named branch exists
+        # Grep the output to find the branch name we want to check
+        # If it does not exist grep will return an exit code of 1, which will cause the step to fail
+        # So if grep returns no results, then test is run to check if the last exit code was equal to 1
+        # If it was, then test will return a 0 exit code and the step will continue, any other error code will result in
+        # test returning exit code 1
+        run: |
+          EXISTS=`git ls-remote --heads | { grep -w refs/heads/$DEPLOY_BRANCH || test $? = 1; }`
+          if [ "$EXISTS" ]; then
+            echo "The deployment branch ($DEPLOY_BRANCH) already exists"
+            echo "DEPLOY_BRANCH_EXISTS=1" >> $GITHUB_ENV
+          else
+            echo "The deployment branch ($DEPLOY_BRANCH) does not already exist"
+          fi
+
+      - name: Create ${{ vars.DEPLOY_BRANCH }} branch if it does not exists
+        working-directory: .
+        if: ${{ env.DEPLOY_BRANCH_EXISTS == '0' }}
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git switch --orphan $DEPLOY_BRANCH
+          git commit --allow-empty -m "Initial commit"
+          git push -u origin $DEPLOY_BRANCH
+          git switch $GITHUB_REF_NAME
+          git branch -D $DEPLOY_BRANCH
+
+      - name: Set dynamic variables in code to deployment values
+        run: |
+          sed -i "s+{{GIT_COMMIT_REF}}+${{ env.SHORT_SHA }}+g" scripts/psn-entitlements.sh
+          sed -i "s+{{GIT_COMMIT_REF}}+${{ env.SHORT_SHA }}+g" scripts/psn-entitlements.ps1
+          sed -i "s+{{GIT_COMMIT_REF}}+${{ env.SHORT_SHA }}+g" website/index.html
+          sed -i "s+{{GIT_TAG_NAME}}+${{ github.ref_name }}+g" scripts/psn-entitlements.sh
+          sed -i "s+{{GIT_TAG_NAME}}+${{ github.ref_name }}+g" scripts/psn-entitlements.ps1
+          sed -i "s+{{GIT_TAG_NAME}}+${{ github.ref_name }}+g" website/index.html
+          echo "These files have been prepared for release:  " >> $GITHUB_STEP_SUMMARY
+          echo "* $(sha256sum scripts/psn-entitlements.sh)" >> $GITHUB_STEP_SUMMARY
+          echo "* $(sha256sum scripts/psn-entitlements.ps1)" >> $GITHUB_STEP_SUMMARY
+          echo "* $(sha256sum website/index.html)" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Upload build files
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.SHORT_SHA }}-files
+          path: |
+            scripts/psn-entitlements.sh
+            scripts/psn-entitlements.ps1
+            website/index.html
+      
+      - name: Create release with files
+        env: 
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${{ github.ref_name }} --generate-notes --verify-tag --draft
+          gh release upload ${{ github.ref_name }} 'website/index.html#index.html'
+          gh release upload ${{ github.ref_name }} 'scripts/psn-entitlements.sh#psn-entitlements.sh'
+          gh release upload ${{ github.ref_name }} 'scripts/psn-entitlements.ps1#psn-entitlements.ps1'
+        
+      - name: Build website
+        working-directory: .
+        run: |
+           mkdir build
+           cp -Rpf website/* ./build
+
+      - name: Deploy build to ${{ env.DEPLOY_BRANCH }} branch
+        working-directory: .
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git fetch
+          git checkout -f $DEPLOY_BRANCH
+          echo "build/" > .gitignore
+          echo ".gitignore" >> .gitignore
+          cp -Rpf build/* .
+          git add -A
+          git commit -am "deploy: $GITHUB_SHA"
+          git push origin $DEPLOY_BRANCH
