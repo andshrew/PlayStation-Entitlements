@@ -153,6 +153,29 @@ MIT License
       border: 1.5px solid var(--color-filters-border-dark);
       color: var(--color-table-bg-dark);
     }
+    .platform-filters {
+      margin-bottom: 0.8em;
+      background: var(--color-filters-bg-light);
+      border-radius: 8px;
+      padding: 8px 18px;
+      border: 1px solid var(--color-filters-border-light);
+      display: flex;
+      gap: 18px;
+    }
+    html[data-theme="dark"] .platform-filters {
+      background: var(--color-filters-bg-dark);
+      border: 1px solid var(--color-filters-border-dark);
+      color: var(--color-filters-text-dark);
+    }
+    .platform-filters label {
+      font-weight: bold;
+      cursor: pointer;
+      margin-right: 12px;
+    }
+    .platform-filters input[type="checkbox"] {
+      margin-right: 6px;
+      vertical-align: middle;
+    }
     .theme-switcher {
       display: flex;
       align-items: center;
@@ -195,6 +218,8 @@ MIT License
     table {
       border-collapse: collapse;
       width: 100%;
+      table-layout: fixed;
+      min-width: 0;
       background: var(--color-table-bg-light);
       color: var(--color-text-light);
       font-family: Arial, sans-serif;
@@ -203,6 +228,8 @@ MIT License
       border: 1px solid var(--color-border-light);
       padding: 8px;
       font-family: Arial, sans-serif;
+      white-space: normal;
+      word-break: break-word;
     }
     th {
       background: var(--color-th-light);
@@ -483,6 +510,15 @@ MIT License
   <input type="file" id="jsonFile" accept=".json,.txt">
   <input type="text" id="search" placeholder="Search by Game Name, Product ID, SKU, etc...">
   <div id="error"></div>
+  <!-- Platform Filters -->
+  <div class="platform-filters" id="platform-filters">
+    <label><input type="checkbox" value="vita" id="platform-vita">Vita</label>
+    <label><input type="checkbox" value="psp" id="platform-psp">PSP</label>
+    <label><input type="checkbox" value="ps3" id="platform-ps3">PS3</label>
+    <label><input type="checkbox" value="ps4" id="platform-ps4">PS4</label>
+    <label><input type="checkbox" value="ps5" id="platform-ps5">PS5</label>
+    <label><input type="checkbox" value="none" id="platform-none">None</label>
+  </div>
   <div class="filters">
     <button id="filter-subscription">Subscription</button>
     <button id="filter-active">Active</button>
@@ -501,6 +537,7 @@ MIT License
         <th data-sort="inactiveDate">Inactive Date</th>-->
         <th data-sort="activeDate">Active Date</th>
         <th data-sort="subscription">Subscription</th>
+        <th>Platforms</th>
       </tr>
     </thead>
     <tbody id="results-body"></tbody>
@@ -623,6 +660,53 @@ MIT License
       renderTable();
     }
 
+    function isPlatform(ent, platform) {
+      switch (platform) {
+        case "psp":
+          return ent.drmDef
+            && ent.drmDef.drmContents
+            && ent.drmDef.drmContents[0].platformIds === 4161798144;
+        case "vita":
+          return ent.drmDef
+            && ent.drmDef.drmContents
+            && ent.drmDef.drmContents[0].platformIds === 2281701376;
+        case "ps3":
+          return ent.drmDef
+            && ent.drmDef.drmContents
+            && ent.drmDef.drmContents[0].platformIds === 2147483648;
+        case "ps4":
+          return ent.entitlementAttributes
+            && ent.entitlementAttributes[0].platformId === "ps4";
+        case "ps5":
+          return ent.entitlementAttributes
+            && ent.entitlementAttributes[0].platformId === "ps5";
+        default:
+          return false;
+      }
+    }
+
+    function getPlatforms(ent) {
+      const platforms = [];
+      if (isPlatform(ent, "vita")) platforms.push("Vita");
+      if (isPlatform(ent, "psp")) platforms.push("PSP");
+      if (isPlatform(ent, "ps3")) platforms.push("PS3");
+      if (isPlatform(ent, "ps4")) platforms.push("PS4");
+      if (isPlatform(ent, "ps5")) platforms.push("PS5");
+      if (platforms.length == 0) platforms.push("None")
+      return platforms.join(", ");
+    }
+
+    function getCheckedPlatforms() {
+      const platforms = [];
+      if (document.getElementById("platform-vita").checked) platforms.push("vita");
+      if (document.getElementById("platform-psp").checked) platforms.push("psp");
+      if (document.getElementById("platform-ps3").checked) platforms.push("ps3");
+      if (document.getElementById("platform-ps4").checked) platforms.push("ps4");
+      if (document.getElementById("platform-ps5").checked) platforms.push("ps5");
+      if (document.getElementById("platform-none").checked) platforms.push("none");
+      return platforms;
+    }
+
     function renderTable() {
       updateRowCount();
       const tbody = document.getElementById('results-body');
@@ -639,11 +723,9 @@ MIT License
           <td>${getProp(item, 'gameMeta.name') || ''}</td>
           <td>${item.productId || ''}</td>
           <td>${item.skuId || ''}</td>
-          <!--  <td>${item.activeFlag ? 'Yes' : 'No'}</td> -->
-          <!--  <td>${getProp(item, 'license.startDate') || ''}</td> -->
-          <!--  <td>${item.inactiveDate || ''}</td> -->
           <td>${item.activeDate || getProp(item, 'license.startDate') || ''}</td>
           <td>${subscriptionCell}</td>
+          <td>${getPlatforms(item)}</td>
         `;
         tr.onclick = () => showDetails(item, idx, tr);
         tbody.appendChild(tr);
@@ -693,6 +775,11 @@ MIT License
           return dateObj.getTime() > Date.now();
         });
       }
+      // Platform filters (combine, intersection)
+      const platforms = getCheckedPlatforms();
+      if (platforms.length > 0) {
+        result = result.filter(ent => platforms.some(p => isPlatform(ent, p)));
+      }
       filteredEntitlements = result;
       applyCurrentSort();
     }
@@ -711,6 +798,10 @@ MIT License
       currentFilter = null;
       setFilterButtonStates();
       filterTable();
+    });
+
+    ["platform-vita", "platform-psp", "platform-ps3", "platform-ps4", "platform-ps5", "platform-none"].forEach(id => {
+      document.getElementById(id).addEventListener("change", filterTable);
     });
 
     function setFilterButtonStates() {
